@@ -1,0 +1,20 @@
+import {readFile,writeFile,mkdir,copyFile} from 'node:fs/promises';
+import {fileURLToPath} from 'node:url';
+import path from 'node:path';
+import {Script} from 'node:vm';
+const base=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
+const parts=['physics','content','question-templates','engine','storage','visuals','lab','app'];
+let script='(()=>{\n"use strict";\n';
+for(const part of parts){let source=await readFile(path.join(base,'src',part+'.js'),'utf8');source=source.replace(/^import\s+.*?;\s*$/gm,'').replace(/^export\s+/gm,'');script+=`\n// ${part}\n${source}\n`;}
+script+='\n})();';
+new Script(script,{filename:'aerion-bundle.js'});
+const css=await readFile(path.join(base,'src/styles.css'),'utf8'),template=await readFile(path.join(base,'src/index.html'),'utf8');
+const html=template.replace('<!--STYLES-->',`<style>${css}</style>`).replace('<!--SCRIPT-->',`<script>${script.replace(/<\/script/gi,'<\\/script')}</script>`);
+await mkdir(path.join(base,'dist'),{recursive:true});await writeFile(path.join(base,'dist/index.html'),html);await writeFile(path.join(base,'index.html'),html);
+const icon='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192"><rect width="192" height="192" rx="43" fill="#087e8b"/><g fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round"><path d="M39 76h82a19 19 0 1 0-18-25M39 100h100a17 17 0 1 1-16 24M39 124h34a17 17 0 1 1-16 22"/></g></svg>';
+await writeFile(path.join(base,'dist/icon.svg'),icon);await writeFile(path.join(base,'icon.svg'),icon);
+const manifest={name:'AERION — O Laboratório dos Ventos',short_name:'AERION',lang:'pt-BR',start_url:'./',scope:'./',display:'standalone',background_color:'#f3f7f8',theme_color:'#087e8b',icons:[{src:'./icon.svg',sizes:'any',type:'image/svg+xml',purpose:'any'}]};
+await writeFile(path.join(base,'dist/manifest.webmanifest'),JSON.stringify(manifest));await writeFile(path.join(base,'manifest.webmanifest'),JSON.stringify(manifest));
+const sw=`const CACHE='aerion-v1-${Date.now()}';const ASSETS=['./','./index.html','./icon.svg','./manifest.webmanifest'];self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting()));});self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('aerion-')&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});self.addEventListener('fetch',e=>{if(e.request.method!=='GET'||new URL(e.request.url).origin!==self.location.origin)return;e.respondWith(fetch(e.request).then(response=>{if(response.ok){const copy=response.clone();caches.open(CACHE).then(c=>c.put(e.request,copy));}return response;}).catch(()=>caches.match(e.request).then(hit=>hit||(e.request.mode==='navigate'?caches.match('./index.html'):Response.error()))));});`;
+await writeFile(path.join(base,'dist/sw.js'),sw);await writeFile(path.join(base,'sw.js'),sw);
+console.log(`AERION pronto: dist/index.html (${Math.round(Buffer.byteLength(html)/1024)} KB), sem dependências externas.`);

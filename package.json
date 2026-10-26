@@ -1,0 +1,16 @@
+{
+  "name": "aerion-laboratorio-dos-ventos",
+  "version": "1.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Laboratório local de gases e termodinâmica, sem dependências de execução.",
+  "scripts": {
+    "dev": "node scripts/serve.mjs",
+    "build": "node scripts/build.mjs",
+    "test": "node --test tests/*.test.js",
+    "start": "node scripts/serve.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
